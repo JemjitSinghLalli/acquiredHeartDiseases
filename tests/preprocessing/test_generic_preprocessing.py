@@ -1,8 +1,9 @@
 """Tests for data preprocessing functions"""
 
 import pandas as pd
+from pytest import raises
 
-from utils.preprocessing.generic_preprocessing import reduce_data_frame_to_numeric_columns
+from utils.preprocessing.generic_preprocessing import reduce_data_frame_to_numeric_columns, bin_numeric_data
 
 
 def test_reduce_data_frame_to_numeric_columns():
@@ -43,3 +44,5 @@ def test_reduce_data_frame_to_numeric_columns():
     assert (
         list(test_result_strings.columns) == []
     ), "reduce_data_frame_to_numeric_columns() did not return expected columns for mixed type columns dataset"
+
+# TODO: add test for bin_numeric_data()
