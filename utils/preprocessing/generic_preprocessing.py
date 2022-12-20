@@ -82,8 +82,6 @@ def reduce_data_frame_to_categorical_columns(
         if (1 < data[col].nunique() < unique_value_limit) and (
             col not in cols_to_exclude
         ):
-            categorical_columns.append(
-                col
-            )
+            categorical_columns.append(col)
     categorical_data = data[categorical_columns]
     return categorical_data.apply(lambda x: x.astype("category").cat.codes)
