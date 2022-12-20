@@ -3,7 +3,11 @@ This is the basic runner for structuring graphs and performing ML over graphs
 """
 
 from utils.load.data_importing import import_csv_data
-from utils.preprocessing.generic_preprocessing import reduce_data_frame_to_numeric_columns, bin_numeric_data
+from utils.preprocessing.generic_preprocessing import (
+    reduce_data_frame_to_numeric_columns,
+    bin_numeric_data,
+    reduce_data_frame_to_categorical_columns,
+)
 from utils.preprocessing.bespoke_preprocessing import convert_columns_to_correct_types
 
 
@@ -12,3 +16,7 @@ df = convert_columns_to_correct_types(df)
 
 numeric_df = reduce_data_frame_to_numeric_columns(df)
 numeric_df = bin_numeric_data(numeric_df, 5)
+
+categorical_df = reduce_data_frame_to_categorical_columns(df, list(numeric_df.columns))
+
+training_df = numeric_df.join(categorical_df)
