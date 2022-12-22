@@ -6,6 +6,7 @@ import networkx as nx
 from networkx.algorithms import tree
 from sklearn.metrics import mutual_info_score
 
+from utils.graphs.structuring import get_directed_edges
 from utils.load.data_importing import import_csv_data
 from utils.preprocessing.generic_preprocessing import (
     reduce_data_frame_to_numeric_columns,
@@ -28,3 +29,4 @@ del numeric_df
 graph = tree.maximum_spanning_tree(nx.from_pandas_adjacency(correlation_matrix))
 nx.draw(graph, with_labels=True)
 plt.show()
+directed_edge_list = get_directed_edges(graph, target="AHD")
