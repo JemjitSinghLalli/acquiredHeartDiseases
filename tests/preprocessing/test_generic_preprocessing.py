@@ -91,7 +91,7 @@ def test_reduce_data_frame_to_categorical_columns():
         data={"col1": range(100), "col2": ["hi", "this", "is", "a", "test"] * 20,}
     )
     test_data_only_numeric_columns = pd.DataFrame(
-        data={"col1": range(100), "col2": range(100), }
+        data={"col1": range(100), "col2": range(100),}
     )
     test_data_only_string_columns = pd.DataFrame(
         data={
