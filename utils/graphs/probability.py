@@ -33,6 +33,88 @@ def get_pd(series: pd.Series, unique_value_limit: int = 15) -> pd.DataFrame:
     )
 
 
+def get_conditional_pd(
+    data: pd.DataFrame, target: str, independent_variables: List[str]
+) -> pd.DataFrame:
+    """Gets conditional probability ovr the states of the target given the states of the independent variables.
+
+    Args:
+        data (pd.DataFrame): The data containing the `target` and `independent_variables`.
+        target (pd.Series): The target series.
+        independent_variables (List[str]): The independent variables.
+
+    Returns: The conditional distribution of the `target` given the `independent_variables` as a pd.DataFrame.
+
+    """
+    data = data.copy()
+    all_variables = independent_variables + [target]
+    grouped_df = (
+        data.groupby(all_variables)
+        .count()
+        .iloc[:, 0]
+        .rename("count")
+        .reset_index(drop=False)
+        .set_index(independent_variables)
+        .join(data.groupby(independent_variables).count().iloc[:, 0].rename("total"))
+    )
+    grouped_df["conditional_probability"] = grouped_df["count"] / grouped_df["total"]
+    grouped_df = grouped_df.reset_index().set_index(all_variables)
+    filler_df = pd.DataFrame(
+        data=list(product(*(sorted(data[v].unique()) for v in all_variables))),
+        columns=all_variables,
+    ).set_index(all_variables)
+    filler_df["count"] = filler_df["total"] = filler_df["conditional_probability"] = 0
+    filler_df.update(grouped_df)
+    return filler_df.reset_index()
+
+
+def convert_cpdt_to_pomegranate_state(
+    conditional_probability_distribution: pd.DataFrame,
+    target: str,
+    independent_variables: List[str],
+    distribution_dict: dict,
+) -> ConditionalProbabilityTable:
+
+    """Takes a conditional probability table in the format output by get_conditional_pd() and turns it in to a
+    corresponding `pomegranate.State`.
+
+    Args:
+        conditional_probability_distribution (pd.DataFrame): The conditional probability table in the format output by
+            get_conditional_pd().
+        target (str): The target of the probability distribution, this is the child node in the network.
+        independent_variables (List[str]): The independent variables in the probability distribution, these are the
+            parent nodes in the network.
+        distribution_dict (dict): This associates nodes to their distributions and needs to be updated for future
+            construction of the `BayesianNetwork`.
+
+    Returns: A pomegranate `ConditionalProbabilityTable` corresponding to the input
+        `conditional_probability_distribution`
+
+    """
+
+    conditional_probability_distribution = conditional_probability_distribution.astype(
+        {x: str for x in independent_variables + [target]}
+    )
+
+    cpd = ConditionalProbabilityTable(
+        [
+            vals
+            for vals in zip(
+                *[
+                    conditional_probability_distribution[var].to_list()
+                    for var in independent_variables
+                    + [target, "conditional_probability"]
+                ]
+            )
+        ],
+        [distribution_dict[key] for key in independent_variables],
+    )
+
+    distribution_dict[target] = cpd
+
+    return State(cpd, name=target), distribution_dict
+
+
 def get_pomegranate_states_from_directed_edges(
     data: pd.DataFrame, directed_edge_list: List[List[str]]
 ) -> Dict[str, State]:
@@ -66,3 +148,25 @@ def get_pomegranate_states_from_directed_edges(
         distribution_dict[broadcast_node] = pom_distribution
 
     from_nodes = broadcast_set.copy()
+
+    while len(state_dict.keys()) < len(from_set.union(to_set)):
+        nodes = directed_edge_df[directed_edge_df["from"].isin(from_nodes)][
+            "to"
+        ].unique()
+        from_nodes = set()
+        for node in nodes:
+            nodes_edges = directed_edge_df[directed_edge_df["to"] == node]
+            if all([x in state_dict.keys() for x in nodes_edges["from"]]):
+                from_nodes.add(node)
+                independent_variables = list(nodes_edges["from"].values)
+                conditional_probability_distribution = get_conditional_pd(
+                    data, node, independent_variables
+                )
+                state_dict[node], distribution_dict = convert_cpdt_to_pomegranate_state(
+                    conditional_probability_distribution,
+                    node,
+                    independent_variables,
+                    distribution_dict,
+                )
+
+    return state_dict
