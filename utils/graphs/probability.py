@@ -8,6 +8,31 @@ import pandas as pd
 from pomegranate import State, DiscreteDistribution, ConditionalProbabilityTable
 
 
+def get_pd(series: pd.Series, unique_value_limit: int = 15) -> pd.DataFrame:
+    """This will get a discrete distribution over the values of the `series`.
+
+    Args:
+        series (pd.Series): The series to get the probability distribution of.
+        unique_value_limit (int): Will reject the distribution if there are too many unique values, defaults to 10.
+
+    Returns: The probability distribution as a pd.DataFrame.
+
+    """
+    assert series.nunique() < unique_value_limit, (
+        f"number of unique values in `series` must be less than `unique_value_limit ({unique_value_limit}) for get_pd()"
+        " to work"
+    )
+    series = series.copy()
+    name = series.name
+    return (
+        (series.value_counts() / series.shape[0])
+        .sort_index()
+        .reset_index()
+        .astype({"index": str})
+        .rename(columns={"index": name, name: "probability"})
+    )
+
+
 def get_pomegranate_states_from_directed_edges(
     data: pd.DataFrame, directed_edge_list: List[List[str]]
 ) -> Dict[str, State]:
@@ -29,3 +54,15 @@ def get_pomegranate_states_from_directed_edges(
     broadcast_set = from_set.difference(to_set)
     state_dict = dict()
     distribution_dict = dict()
+    for broadcast_node in broadcast_set:
+        probability_distribution = get_pd(data[broadcast_node])
+        pom_distribution = DiscreteDistribution(
+            {
+                category: probability
+                for category, probability in probability_distribution.values
+            }
+        )
+        state_dict[broadcast_node] = State(pom_distribution, name=broadcast_node)
+        distribution_dict[broadcast_node] = pom_distribution
+
+    from_nodes = broadcast_set.copy()
