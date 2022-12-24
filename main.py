@@ -9,6 +9,7 @@ from sklearn.metrics import mutual_info_score
 from utils.graphs.probability import get_pomegranate_states_from_directed_edges
 from utils.graphs.structuring import get_directed_edges
 from utils.load.data_importing import import_csv_data
+from utils.modelling.bayes_model import get_bayesian_network
 from utils.preprocessing.generic_preprocessing import (
     reduce_data_frame_to_numeric_columns,
     bin_numeric_data,
@@ -28,8 +29,9 @@ correlation_matrix = training_df.corr(method=mutual_info_score)
 del categorical_df
 del numeric_df
 graph = tree.maximum_spanning_tree(nx.from_pandas_adjacency(correlation_matrix))
-# nx.draw(graph, with_labels=True)
-# plt.show()
+nx.draw(graph, with_labels=True)
+plt.show()
 directed_edge_list = get_directed_edges(graph, target="AHD")
 state_dict = get_pomegranate_states_from_directed_edges(training_df, directed_edge_list)
-print(state_dict)
+model, state_name_order = get_bayesian_network(state_dict, directed_edge_list)
+print(model)
